@@ -1,43 +1,20 @@
-const sql = require('mssql');
+const sql = require('mssql/msnodesqlv8');
 
-// Load environment variables
-require('dotenv').config();
-
-// Add these debug lines at the top
-console.log('Environment variables:');
-console.log('DB_SERVER:', process.env.DB_SERVER);
-console.log('DB_NAME:', process.env.DB_NAME);
-console.log('DB_USER:', process.env.DB_USER);
+console.log('Using Windows Authentication');
+console.log('DB_SERVER:', 'THINKPAD\\SQLEXPRESS04');
+console.log('DB_NAME:', 'MyShowSphere');
 
 const config = {
-  server: process.env.DB_SERVER || 'THINKPAD\\SQLEXPRESS04',  // Add fallback
-  database: process.env.DB_NAME || 'mywebsite',
-  user: process.env.DB_USER || 'sa',
-  password: process.env.DB_PASSWORD || '12345678',
+  connectionString: 'Driver={SQL Server Native Client 11.0};Server=THINKPAD\\SQLEXPRESS04;Database=MyShowSphere;Trusted_Connection=Yes;',
   options: {
-    encrypt: process.env.DB_ENCRYPT === 'true',
-    trustServerCertificate: process.env.DB_TRUST_SERVER_CERT === 'true',
-    driver: 'ODBC Driver 17 for SQL Server'
-  }
-};
-
-// Database configuration with SQL Server Authentication from environment variables
-const config = {
-  server: process.env.DB_SERVER,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  options: {
-    encrypt: process.env.DB_ENCRYPT === 'true',
-    trustServerCertificate: process.env.DB_TRUST_SERVER_CERT === 'true',
-    driver: 'ODBC Driver 17 for SQL Server'
+    trustServerCertificate: true
   }
 };
 
 const poolPromise = new sql.ConnectionPool(config)
   .connect()
   .then(pool => {
-    console.log('Connected to MSSQL');
+    console.log('Connected to MSSQL using Windows Authentication');
     return pool;
   })
   .catch(err => {

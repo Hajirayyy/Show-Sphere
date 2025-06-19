@@ -1,0 +1,349 @@
+-- ============================ QUERIES ================================= (Current Total = 14)
+----------------------------------------------------------------------------------------------------------------
+use ShowSphere
+-------------------------------------
+-- USER & AUTHENTICATION QUERIES	(Current Total = 1)
+--------------------------------------
+
+-- 1. Total number of users and admins
+SELECT 
+  (SELECT COUNT(*) FROM Users) AS TotalUsers,
+  (SELECT COUNT(*) FROM Admins) AS TotalAdmins;
+GO
+
+----------------------------------
+-- MOVIE & SHOWTIME QUERIES			(Current Total = 5)
+----------------------------------
+
+-- 2. Get all available movies
+SELECT * FROM Movies WHERE releaseDate <= GETDATE()
+GO
+
+--3. Retrieve all movies currently showing
+SELECT M.movieID, M.title, M.genre, S.showDate, S.showStartTime, S.showEndTime
+FROM Movies M
+JOIN Showtimes S ON M.movieID = S.movieID
+WHERE S.showDate >= GETDATE()
+ORDER BY S.showDate, S.showStartTime
+GO
+
+--4. Find upcoming movie releases (no op)
+SELECT * FROM Movies WHERE releaseDate > GETDATE() ORDER BY releaseDate ASC;
+
+--5. Find the most popular movie based on upcoming showtimes
+SELECT TOP 1 M.title, COUNT(S.showtimeID) AS TotalShowtimes
+FROM Movies M
+JOIN Showtimes S ON M.movieID = S.movieID
+WHERE S.showDate >= GETDATE()
+GROUP BY M.title
+ORDER BY TotalShowtimes DESC;
+
+
+--6. Count the total number of showtimes per theatre
+SELECT T.theatreName, COUNT(S.showtimeID) AS TotalShowtimes
+FROM Theatres T
+JOIN Screens SC ON T.theatreID = SC.theatreID
+JOIN Showtimes S ON SC.screenID = S.screenID
+WHERE S.showDate >= GETDATE()
+GROUP BY T.theatreName
+ORDER BY TotalShowtimes DESC;
+GO
+
+---------------------------------------
+-- BOOKING & SEATING QUERIES			(Current Total = 5)
+---------------------------------------
+
+-- 7. Most popular movie based on bookings
+SELECT M.title, COUNT(B.bookingID) AS TotalBookings
+FROM Movies M
+LEFT JOIN Showtimes S ON M.movieID = S.movieID
+LEFT JOIN Bookings B ON S.showtimeID = B.showtimeID
+GROUP BY M.title
+HAVING COUNT(B.bookingID) > 0
+ORDER BY TotalBookings DESC;
+
+-- 8. Most frequently booked theatre
+SELECT TOP 1 T.theatreName, COUNT(B.bookingID) AS TotalBookings
+FROM Theatres T
+JOIN Screens S ON T.theatreID = S.theatreID
+JOIN Showtimes ST ON S.screenID = ST.screenID
+JOIN Bookings B ON ST.showtimeID = B.showtimeID
+GROUP BY T.theatreName
+ORDER BY TotalBookings DESC
+GO
+
+-- 9. Users who have never made a booking
+SELECT U.userID, U.userName, U.email
+FROM Users U
+LEFT JOIN Bookings B ON U.userID = B.userID
+WHERE B.userID IS NULL
+GO
+
+--10.Find the most loyal customers (frequent bookers)
+SELECT TOP 5 U.userID, U.userName, U.email, COUNT(B.bookingID) AS TotalBookings
+FROM Users U
+JOIN Bookings B ON U.userID = B.userID
+WHERE B.bookingStatus = 'Booked'
+GROUP BY U.userID, U.userName, U.email
+ORDER BY TotalBookings DESC;
+GO
+
+
+--11. View for Underperforming Movies (Low Bookings & Ratings)
+SELECT m.title, 
+       COUNT(b.bookingID) AS totalBookings, 
+       AVG(r.rating) AS avgRating
+FROM Movies m
+JOIN Reviews r ON m.movieID = r.movieID
+JOIN Showtimes s ON m.movieID = s.movieID
+LEFT JOIN Bookings b ON s.showtimeID = b.showtimeID
+GROUP BY m.title
+HAVING COUNT(b.bookingID) < 5 AND AVG(r.rating) < 3;
+
+
+-------------------------------------------
+-- PAYMENT QUERIES				(Current Total = 5)
+------------------------------------------
+
+-- 12. Get all successful payments
+SELECT * FROM Payments WHERE paymentStatus = 'Paid'
+GO
+
+
+--13. Payment method popularity (Credit Card, Cash, etc.)
+SELECT paymentMethod, COUNT(paymentID) AS TotalTransactions, SUM(amount) AS TotalAmount
+FROM Payments
+WHERE paymentStatus = 'Paid'
+GROUP BY paymentMethod
+ORDER BY TotalTransactions DESC;
+GO
+
+----------------------------------------------------
+-- REVIEW QUERIES						(Current Total = 1)
+---------------------------------------------------
+
+-- 14. Top 5 movies with the highest avg rating
+SELECT TOP 5 M.title, AVG(R.rating) AS AvgRating
+FROM Movies M
+JOIN Reviews R ON M.movieID = R.movieID
+GROUP BY M.title
+ORDER BY AvgRating DESC
+GO
+
+
+-- ============================ VIEWS ================================================ (Current Total = 6)
+----------------------------------------------------------------------------------------------------------------
+
+--1. View for active showtime
+CREATE VIEW ActiveShowtimes AS
+SELECT s.showtimeID, m.title, sc.screenName, t.theatreName, s.showDate, s.showStartTime, s.showEndTime
+FROM Showtimes s
+JOIN Movies m ON s.movieID = m.movieID
+JOIN Screens sc ON s.screenID = sc.screenID
+JOIN Theatres t ON sc.theatreID = t.theatreID
+WHERE s.showDate >= GETDATE()
+GO
+
+--2. View for payment details
+CREATE VIEW PaymentDetails AS
+SELECT p.paymentID, u.userName, m.title, p.amount, p.paymentMethod, p.paymentStatus, p.paymentDate
+FROM Payments p
+JOIN Bookings b ON p.bookingID = b.bookingID
+JOIN Users u ON b.userID = u.userID
+JOIN Showtimes s ON b.showtimeID = s.showtimeID
+JOIN Movies m ON s.movieID = m.movieID
+GO
+
+--3. View to see total earnings per theatre
+CREATE VIEW TheatreEarnings AS
+SELECT T.theatreName, SUM(P.amount) AS TotalEarnings
+FROM Theatres T
+JOIN Screens S ON T.theatreID = S.theatreID
+JOIN Showtimes ST ON S.screenID = ST.screenID
+JOIN Bookings B ON ST.showtimeID = B.showtimeID
+JOIN Payments P ON B.bookingID = P.bookingID
+WHERE P.paymentStatus = 'Paid'
+GROUP BY T.theatreName
+GO
+
+--4. View to see user booking history
+CREATE VIEW UserBookingHistory AS
+SELECT U.userID,B.bookingID,  U.userName, M.title, ST.showDate, ST.showStartTime, B.seatsBooked, B.bookingStatus
+FROM Users U
+JOIN Bookings B ON U.userID = B.userID
+JOIN Showtimes ST ON B.showtimeID = ST.showtimeID
+JOIN Movies M ON ST.movieID = M.movieID
+GO
+
+--5. View for movie popularity 
+CREATE VIEW MoviePopularity AS
+SELECT m.title, COUNT(b.bookingID) AS totalBookings
+FROM Movies m
+JOIN Showtimes s ON m.movieID = s.movieID
+JOIN Bookings b ON s.showtimeID = b.showtimeID
+GROUP BY m.title;
+GO
+
+-- 6. Updated View for Booking Details with Dynamic Pricing
+CREATE OR ALTER VIEW BookingDetails AS
+SELECT 
+    B.bookingID, 
+    U.userName, 
+    M.title AS MovieTitle, 
+    S.showDate, 
+    S.showStartTime, 
+    B.seatsBooked, 
+    (B.seatsBooked * T.price) AS TotalPrice, -- Dynamic Calculation
+    B.bookingStatus, 
+    P.paymentStatus
+FROM Bookings B
+JOIN Users U ON B.userID = U.userID
+JOIN Showtimes S ON B.showtimeID = S.showtimeID
+JOIN Movies M ON S.movieID = M.movieID
+JOIN Tickets T ON S.showtimeID = T.showtimeID
+LEFT JOIN Payments P ON B.bookingID = P.bookingID;
+GO
+
+
+-- ============================ Stored Proceures ================================================ (Current Total = 3)
+----------------------------------------------------------------------------------------------------------------
+
+--1. Stored Procedure for Total Revenue in a Date Range
+CREATE PROCEDURE GetTotalRevenue 
+    @StartDate DATE, 
+    @EndDate DATE
+AS
+BEGIN
+    SELECT SUM(P.amount) AS TotalRevenue
+    FROM Payments P
+    WHERE P.paymentStatus = 'Paid' 
+    AND P.paymentDate BETWEEN @StartDate AND @EndDate;
+END;
+GO
+
+EXEC GetTotalRevenue @StartDate = '2025-03-29', @EndDate = '2025-04-16';
+
+--2.Stored Procedure for High-Spending Customers
+CREATE PROCEDURE GetHighSpendingCustomers 
+    @TopN INT
+AS
+BEGIN
+    SELECT TOP (@TopN) U.userID, U.userName, SUM(P.amount) AS TotalSpent
+    FROM Users U
+    JOIN Bookings B ON U.userID = B.userID
+    JOIN Payments P ON B.bookingID = P.bookingID
+    WHERE P.paymentStatus = 'Paid'
+    GROUP BY U.userID, U.userName
+    ORDER BY TotalSpent DESC;
+END;
+GO
+EXEC GetHighSpendingCustomers @TopN = 5;
+
+--3 Average amount spent per user on bookings
+CREATE PROCEDURE GetAvgSpentPerUser
+AS
+BEGIN
+    SELECT AVG(UserTotal) AS AvgSpentPerUser
+    FROM (
+        SELECT B.userID, SUM(P.amount) AS UserTotal
+        FROM Payments P
+        JOIN Bookings B ON P.bookingID = B.bookingID
+        WHERE P.paymentStatus = 'Paid'
+        GROUP BY B.userID
+    ) AS Spending;
+END;
+GO
+EXEC GetAvgSpentPerUser;
+
+
+
+CREATE PROCEDURE GetBookingDetails
+    @bookingID INT
+AS
+BEGIN
+    SELECT 
+        B.bookingID,
+        M.title AS movieTitle,
+        T.theatreName,
+        T.theatreLocation,
+        S.screenName,
+        ST.showDate,
+        ST.showStartTime,
+        ST.showEndTime,
+        STRING_AGG(CONCAT(SL.seatRow, SL.seatNumber), ', ') AS seatNumbers,
+        B.totalPrice,
+        P.paymentStatus,
+        P.paymentMethod
+    FROM Bookings B
+    JOIN Showtimes ST ON B.showtimeID = ST.showtimeID
+    JOIN Movies M ON ST.movieID = M.movieID
+    JOIN Screens S ON ST.screenID = S.screenID
+    JOIN Theatres T ON S.theatreID = T.theatreID
+    JOIN SeatReservation SR ON B.bookingID = SR.bookingID
+    JOIN SeatLayout SL ON SR.seatID = SL.seatID
+    LEFT JOIN Payments P ON B.bookingID = P.bookingID
+    WHERE B.bookingID = @bookingID
+    GROUP BY 
+        B.bookingID, M.title, T.theatreName, T.theatreLocation,
+        S.screenName, ST.showDate, ST.showStartTime, ST.showEndTime,
+        B.totalPrice, P.paymentStatus, P.paymentMethod
+END;
+GO
+
+EXEC GetBookingDetails @bookingID = 12;
+GO
+
+SELECT 
+  u.userName,
+  m.title AS movieTitle,
+  FORMAT(b.bookingTime, 'yyyy-MM-dd') AS bookingDate,
+  b.seatsBooked,
+  p.paymentMethod,
+  p.paymentStatus
+FROM Bookings b
+JOIN Users u ON b.userID = u.userID
+JOIN Showtimes s ON b.showtimeID = s.showtimeID
+JOIN Movies m ON s.movieID = m.movieID
+LEFT JOIN Payments p ON b.bookingID = p.bookingID
+WHERE b.bookingStatus = 'Booked'
+ORDER BY b.bookingTime DESC;
+
+
+SELECT userName, COUNT(*) AS totalBookings
+FROM Bookings B
+JOIN Users U ON B.userID = U.userID
+GROUP BY userName
+ORDER BY totalBookings DESC;
+
+
+
+DECLARE @userID INT = 23;
+ SELECT  B.*, 
+                M.title        AS movieTitle,
+                T.theatreName,
+                S.screenName,
+                P.paymentStatus,
+                P.paymentID, 
+                P.amount
+        FROM Bookings B
+        JOIN Showtimes ST  ON B.showtimeID = ST.showtimeID
+        JOIN Movies    M   ON ST.movieID   = M.movieID
+        JOIN Screens   S   ON ST.screenID  = S.screenID
+        JOIN Theatres  T   ON S.theatreID  = T.theatreID
+        LEFT JOIN Payments P ON B.bookingID = P.bookingID
+        WHERE B.userID = @userID
+        ORDER BY B.bookingTime DESC
+
+
+		select * FROM Bookings where bookingStatus = 'Cancelled'
+
+		SELECT TOP 5
+  M.movieID,
+  M.title,
+  M.genre,
+  M.imageURL,
+  AVG(R.rating) AS AvgRating
+FROM Movies M
+JOIN Reviews R ON M.movieID = R.movieID
+GROUP BY M.movieID, M.title, M.genre, M.imageURL
+ORDER BY AvgRating DESC;

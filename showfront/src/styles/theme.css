@@ -1,0 +1,104 @@
+/* GLOBAL LIGHT GRADIENT THEME */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(to right, #f3e7e9, #e3eeff);
+  color: #1e1e1e;
+}
+
+a {
+  color: #6a1b9a;
+  text-decoration: none;
+}
+
+h1, h2, h3 {
+  color: #6a1b9a;
+}
+
+/* CONTAINERS */
+.auth-container,
+.page-container {
+  max-width: 600px;
+  margin: 3rem auto;
+  background-color: white;
+  padding: 2rem;
+  border-radius: 12px;
+  box-shadow: 0 0 16px rgba(0, 0, 0, 0.1);
+}
+
+/* FORM ELEMENTS */
+input,
+select,
+textarea {
+  width: 100%;
+  padding: 10px;
+  margin-top: 12px;
+  margin-bottom: 16px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  background-color: #fdfdfd;
+  color: #1e1e1e;
+}
+
+button {
+  background-color: #a259ff;
+  color: white;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button:hover {
+  background-color: #7c4dff;
+  transition: 0.2s ease-in-out;
+}
+
+ul {
+  list-style-type: none;
+  padding: 0;
+}
+
+li {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  background-color: #ffffff;
+}
+
+/* LAYOUT */
+.flex-row {
+  display: flex;
+  gap: 1rem;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Additional for password toggling */
+.toggle-eye {
+  font-size: 0.9rem;
+  margin-top: -10px;
+  margin-bottom: 12px;
+  color: #444;
+}
+
+.form-success {
+  color: limegreen;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+
+.form-error {
+  color: red;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  text-align: center;
+}
+

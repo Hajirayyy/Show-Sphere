@@ -1,0 +1,8 @@
+npm init -y
+npm install msnodesqlv8 --save
+node 
+npm install express express-session mssql bcryptjs cookie-parser dotenv
+npm install jsonwebtoken dotenv
+npm install express jsonwebtoken dotenv cors body-parser
+npm install bcrypt
+npm install jsonwebtoken
